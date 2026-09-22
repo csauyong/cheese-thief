@@ -26,11 +26,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # One-time setup: Settings → Pages → Source: GitHub Actions. The
+      # workflow token is not allowed to create a Pages site itself, so
+      # `enablement: true` here fails with a much less obvious error than
+      # this step's own "Pages is not enabled" one.
       - uses: actions/configure-pages@v5
-        # Turns Pages on the first time, so the repository needs no manual
-        # setup in Settings before the first deploy can land.
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

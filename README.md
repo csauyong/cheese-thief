@@ -113,6 +113,17 @@ Full rules live in the app itself, in both languages. In brief:
 **仍然知道誰是大盜**，而且還是貪睡鼠——他得在沒有任何證據的情況下說服全桌。這是規則寫明的，
 也是這遊戲最好玩的一種局面。
 
+## 部署 / Deploying
+
+推到 `main` 會自動 build 並發布到 GitHub Pages。**第一次要先手動開啟一次**：
+repo 的 Settings → Pages → Source 選 **GitHub Actions**。Workflow 的權限不足以自己建立
+Pages 網站，所以在那之前 deploy 會停在 `configure-pages` 這一步。
+
+Pushing to `main` builds and publishes to GitHub Pages. **It needs enabling
+once by hand** first: Settings → Pages → Source → **GitHub Actions**. The
+workflow token is not permitted to create a Pages site, so until then the deploy
+stops at the `configure-pages` step.
+
 ## 開發 / Development
 
 ```bash
