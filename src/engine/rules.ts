@@ -103,10 +103,24 @@ export function canPeek(state: GameState, playerId: PlayerId): boolean {
  * nothing else. `engine.test.ts` asserts that no report names a player who was
  * neither awake alongside them nor the target of their peek.
  */
-export function nightReportFor(state: GameState, playerId: PlayerId): NightReport {
+export function nightReportFor(
+  state: GameState,
+  playerId: PlayerId,
+  /**
+   * Live mode: clamp the report to what this player would know by the hour
+   * currently being called. Without it the 4人 thief would read their second
+   * waking before it happened, and a 共犯 would be told they had been recruited
+   * before the theft they are supposed to walk in on.
+   */
+  upToHour?: Hour,
+): NightReport {
   const player = playerById(state, playerId)
   const preset = state.preset
-  const hours = wakeHoursOf(player, preset)
+  const allHours = wakeHoursOf(player, preset)
+  const hours = upToHour === undefined ? allHours : allHours.filter((h) => h <= upToHour)
+  if (hours.length === 0) {
+    throw new Error(`${playerId} has not woken yet — check hasWokenBy first`)
+  }
   const theftHour = theftHourOf(state)
 
   const awakeWith = uniqueIds(
@@ -118,7 +132,8 @@ export function nightReportFor(state: GameState, playerId: PlayerId): NightRepor
   )
 
   const isThief = player.id === state.thiefId
-  const sawTheft = !isThief && hours.includes(theftHour)
+  const theftSeen = hours.includes(theftHour)
+  const sawTheft = !isThief && theftSeen
   const cheese: CheeseSighting = isThief ? 'tookIt' : cheeseSightingAt(hours[0], theftHour)
 
   const accompliceIds = state.players.filter((p) => p.isAccomplice).map((p) => p.id)
@@ -131,15 +146,23 @@ export function nightReportFor(state: GameState, playerId: PlayerId): NightRepor
     awakeWith,
     cheese,
     sawTheft,
-    isAccomplice: player.isAccomplice,
+    // Being recruited is something you find out by walking in on the theft, so
+    // it only reaches the player once that hour has been called.
+    isAccomplice: player.isAccomplice && sawTheft,
     // Anyone awake as the cheese went looked the thief in the eye, 共犯 or not.
     // A witness the thief did not recruit knows exactly who did it and has to be
     // believed on nothing but their word — which is the best seat in the game.
-    thiefId: isThief || player.isAccomplice || sawTheft ? state.thiefId : null,
-    accompliceIds: isThief ? accompliceIds : [],
+    thiefId: isThief || sawTheft ? state.thiefId : null,
+    accompliceIds: isThief && theftSeen ? accompliceIds : [],
     canPeek: canPeek(state, playerId) && player.peekedAt === null,
     peekedAt: peekTarget ? { playerId: peekTarget.id, dice: peekTarget.dice } : null,
   }
+}
+
+/** Live mode: has this player's hour been called yet? */
+export function hasWokenBy(state: GameState, playerId: PlayerId, hour: Hour): boolean {
+  const player = playerById(state, playerId)
+  return wakeHoursOf(player, state.preset).some((h) => h <= hour)
 }
 
 export function tallyVotes(players: Player[]): VoteTally {

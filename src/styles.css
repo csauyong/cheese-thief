@@ -470,3 +470,56 @@ input[type='text']:focus-visible,
     animation: none !important;
   }
 }
+
+/* ---- networked play ---- */
+
+.code-big {
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em; /* balances the trailing letter-spacing */
+  color: var(--cheese);
+}
+
+.tag.status-open {
+  border-color: var(--good);
+  color: var(--good);
+}
+.tag.status-connecting {
+  border-color: var(--cheese-dim);
+  color: var(--cheese);
+}
+.tag.status-closed,
+.tag.status-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.hour-dial {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-dial span {
+  width: 34px;
+  height: 34px;
+  line-height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-align: center;
+}
+
+.hour-dial span.on {
+  border-color: var(--cheese);
+  background: var(--cheese);
+  color: #201a08;
+  font-weight: 700;
+}
+
+.awake {
+  color: var(--cheese);
+  font-size: 1.15rem;
+}

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyAction, createGame, currentPlayer, pendingChoice } from './engine'
+import {
+  applyAction,
+  createGame,
+  currentPlayer,
+  isAwakeNow,
+  pendingChoice,
+  pendingChoiceFor,
+  pendingPlayers,
+} from './engine'
 import { presetFor } from './presets'
 import {
   accompliceSlots,
@@ -16,7 +24,16 @@ import {
   wakeHoursOf,
   witnessesOf,
 } from './rules'
-import type { GameSetup, GameState, Hour, Player, PlayerId, Role, RulesConfig } from './types'
+import type {
+  GameMode,
+  GameSetup,
+  GameState,
+  Hour,
+  Player,
+  PlayerId,
+  Role,
+  RulesConfig,
+} from './types'
 import { HOURS } from './types'
 
 const NAMES = ['Ada', 'Bo', 'Cai', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal']
@@ -37,6 +54,7 @@ function setup(players: number, over: Partial<RulesConfig> = {}): GameSetup {
 function handDeal(
   spec: Array<{ role: Role; dice: Hour[]; chosenDie?: number }>,
   over: Partial<RulesConfig> = {},
+  mode: GameMode = 'hotseat',
 ): GameState {
   const players: Player[] = spec.map((s, seat) => ({
     id: `p${seat}`,
@@ -50,15 +68,22 @@ function handDeal(
     vote: null,
   }))
   const thief = players.find((p) => p.role === 'thief')!
-  return {
+  const state: GameState = {
     seed: 1,
+    mode,
     phase: 'reveal',
     preset: presetFor(spec.length),
     rules: rules(over),
     players,
     thiefId: thief.id,
     cursor: 0,
+    nightHour: null,
+    ready: [],
   }
+  if (!thiefMustChooseAccomplices(state)) {
+    for (const witness of witnessesOf(state)) witness.isAccomplice = true
+  }
+  return state
 }
 
 /** A vote policy that is always legal: point at the next player round the table. */
@@ -591,14 +616,14 @@ describe('the night leaks nothing', () => {
   })
 
   it('tells a 共犯 who the thief is, and the thief who their 共犯 are', () => {
-    let s = handDeal([
+    const s = handDeal([
       { role: 'thief', dice: [3] },
       { role: 'sleepyhead', dice: [3] },
       { role: 'sleepyhead', dice: [1] },
       { role: 'sleepyhead', dice: [5] },
       { role: 'sleepyhead', dice: [6] },
     ])
-    s = applyAction(s, { type: 'designateAccomplices', ids: ['p1'] })
+    expect(thiefMustChooseAccomplices(s)).toBe(false) // one witness, one slot
     expect(nightReportFor(s, 'p1').thiefId).toBe('p0')
     expect(nightReportFor(s, 'p0').accompliceIds).toEqual(['p1'])
     expect(nightReportFor(s, 'p2').thiefId).toBeNull()
@@ -621,5 +646,190 @@ describe('the night leaks nothing', () => {
     expect(spurned.thiefId).toBe('p0')
     expect(spurned.accompliceIds).toEqual([]) // they do not learn who was recruited
     expect(nightReportFor(s, 'p3').thiefId).toBeNull()
+  })
+})
+
+describe('live mode: a phone each', () => {
+  const liveDeal = () =>
+    handDeal(
+      [
+        { role: 'thief', dice: [3] },
+        { role: 'sleepyhead', dice: [3] },
+        { role: 'sleepyhead', dice: [3] },
+        { role: 'sleepyhead', dice: [5] },
+        { role: 'sleepyhead', dice: [1] },
+      ],
+      {},
+      'live',
+    )
+
+  const readyAll = (state: GameState, ids: PlayerId[]) =>
+    ids.reduce((s, id) => applyAction(s, { type: 'ready', playerId: id }), state)
+
+  it('waits for every player to see their card, then opens the night at one o’clock', () => {
+    let s = liveDeal()
+    expect(pendingPlayers(s)).toHaveLength(5)
+    expect(() => applyAction(s, { type: 'advance' })).toThrow(/waiting on/)
+
+    s = readyAll(s, ['p0', 'p1', 'p2', 'p3', 'p4'])
+    expect(pendingPlayers(s)).toEqual([])
+    s = applyAction(s, { type: 'advance' })
+    expect(s.phase).toBe('night')
+    expect(s.nightHour).toBe(1)
+    expect(s.ready).toEqual([])
+  })
+
+  it('only waits on the players actually awake at the hour being called', () => {
+    let s = readyAll(liveDeal(), ['p0', 'p1', 'p2', 'p3', 'p4'])
+    s = applyAction(s, { type: 'advance' }) // → 1 o'clock
+
+    expect(pendingPlayers(s)).toEqual(['p4']) // only p4 rolled a 1
+    expect(isAwakeNow(s, 'p4')).toBe(true)
+    expect(isAwakeNow(s, 'p0')).toBe(false)
+
+    s = applyAction(s, { type: 'ready', playerId: 'p4' })
+    s = applyAction(s, { type: 'advance' }) // → 2 o'clock
+    expect(s.nightHour).toBe(2)
+    expect(pendingPlayers(s)).toEqual([]) // nobody rolled a 2
+  })
+
+  it('makes the thief point at their 共犯 in the moment, not in advance', () => {
+    let s = readyAll(liveDeal(), ['p0', 'p1', 'p2', 'p3', 'p4'])
+    s = applyAction(s, { type: 'advance' })
+
+    // Nothing to decide before the theft hour arrives.
+    expect(pendingChoiceFor(s, 'p0')).toBeNull()
+    expect(() => applyAction(s, { type: 'designateAccomplices', ids: ['p1'] })).toThrow()
+
+    s = applyAction(s, { type: 'ready', playerId: 'p4' })
+    s = applyAction(s, { type: 'advance' }) // 2
+    s = applyAction(s, { type: 'advance' }) // 3 — the theft
+    expect(s.nightHour).toBe(3)
+    expect(pendingChoiceFor(s, 'p0')).toBe('accomplices')
+
+    // The thief cannot slip away from the choice by declaring themselves ready.
+    expect(() => applyAction(s, { type: 'ready', playerId: 'p0' })).toThrow()
+
+    s = applyAction(s, { type: 'designateAccomplices', ids: ['p2'] })
+    expect(s.players.filter((p) => p.isAccomplice).map((p) => p.id)).toEqual(['p2'])
+    expect(pendingChoiceFor(s, 'p0')).toBeNull()
+  })
+
+  it('refuses an action from a player who is asleep right now', () => {
+    let s = readyAll(liveDeal(), ['p0', 'p1', 'p2', 'p3', 'p4'])
+    s = applyAction(s, { type: 'advance' }) // 1 o'clock; only p4 is up
+    expect(() => applyAction(s, { type: 'peek', playerId: 'p3', targetId: 'p0' })).toThrow(
+      /asleep/,
+    )
+    // p4 woke alone, so the peek is theirs to take.
+    s = applyAction(s, { type: 'peek', playerId: 'p4', targetId: 'p0' })
+    expect(nightReportFor(s, 'p4').peekedAt).toEqual({ playerId: 'p0', dice: [3] })
+  })
+
+  it('runs a whole round to a result, waiting on every vote', () => {
+    let s = readyAll(liveDeal(), ['p0', 'p1', 'p2', 'p3', 'p4'])
+    s = applyAction(s, { type: 'advance' })
+
+    while (s.phase === 'night') {
+      for (const id of pendingPlayers(s)) {
+        if (pendingChoiceFor(s, id) === 'accomplices') {
+          s = applyAction(s, { type: 'designateAccomplices', ids: ['p1'] })
+        }
+        s = applyAction(s, { type: 'ready', playerId: id })
+      }
+      s = applyAction(s, { type: 'advance' })
+    }
+
+    expect(s.phase).toBe('discussion')
+    expect(s.nightHour).toBeNull()
+    s = applyAction(s, { type: 'advance' })
+    expect(s.phase).toBe('vote')
+
+    expect(pendingPlayers(s)).toHaveLength(5)
+    expect(() => applyAction(s, { type: 'advance' })).toThrow(/waiting on/)
+    for (const p of s.players) {
+      s = applyAction(s, { type: 'castVote', playerId: p.id, targetId: p.id === 'p0' ? 'p1' : 'p0' })
+    }
+    s = applyAction(s, { type: 'advance' })
+
+    expect(s.phase).toBe('results')
+    expect(decideOutcome(s).thiefCaught).toBe(true)
+  })
+
+  it('never consults the seat cursor', () => {
+    const s = liveDeal()
+    expect(currentPlayer(s)).toBeNull()
+    expect(pendingChoice(s)).toBeNull()
+    // Anyone may act for themselves, whatever the cursor happens to say.
+    const moved = { ...s, cursor: 3 }
+    expect(() => applyAction(moved, { type: 'ready', playerId: 'p0' })).not.toThrow()
+  })
+
+  it('keeps readiness out of the hotseat game entirely', () => {
+    const s = handDeal([
+      { role: 'thief', dice: [3] },
+      { role: 'sleepyhead', dice: [1] },
+      { role: 'sleepyhead', dice: [5] },
+      { role: 'sleepyhead', dice: [6] },
+      { role: 'sleepyhead', dice: [2] },
+    ])
+    expect(pendingPlayers(s)).toEqual([])
+    expect(() => applyAction(s, { type: 'ready', playerId: 'p0' })).toThrow(/phone each/)
+  })
+})
+
+describe('live mode: the night runs on a clock', () => {
+  const deal = () =>
+    handDeal(
+      [
+        { role: 'thief', dice: [3] },
+        { role: 'sleepyhead', dice: [3] },
+        { role: 'sleepyhead', dice: [3] },
+        { role: 'sleepyhead', dice: [5] },
+        { role: 'sleepyhead', dice: [1] },
+      ],
+      {},
+      'live',
+    )
+
+  const intoNight = () => {
+    let s = deal()
+    for (const p of s.players) s = applyAction(s, { type: 'ready', playerId: p.id })
+    return applyAction(s, { type: 'advance' })
+  }
+
+  it('moves on even with players still acting, so every hour can take the same time', () => {
+    const s = intoNight()
+    expect(pendingPlayers(s)).toEqual(['p4']) // p4 is up and has not finished
+    expect(() => applyAction(s, { type: 'advance' })).not.toThrow()
+    expect(applyAction(s, { type: 'advance' }).nightHour).toBe(2)
+  })
+
+  it('still gives a thief who ran out of time their 共犯', () => {
+    let s = intoNight()
+    s = applyAction(s, { type: 'advance' }) // 2
+    s = applyAction(s, { type: 'advance' }) // 3 — the theft, two witnesses, one slot
+    expect(pendingChoiceFor(s, 'p0')).toBe('accomplices')
+
+    s = applyAction(s, { type: 'advance' }) // the hour runs out
+    const accomplices = s.players.filter((p) => p.isAccomplice).map((p) => p.id)
+    expect(accomplices).toHaveLength(1)
+    expect(witnessesOf(s).map((p) => p.id)).toContain(accomplices[0])
+  })
+
+  it('leaves a thief’s own pick alone when they made one in time', () => {
+    let s = intoNight()
+    s = applyAction(s, { type: 'advance' })
+    s = applyAction(s, { type: 'advance' })
+    s = applyAction(s, { type: 'designateAccomplices', ids: ['p2'] })
+    s = applyAction(s, { type: 'advance' })
+    expect(s.players.filter((p) => p.isAccomplice).map((p) => p.id)).toEqual(['p2'])
+  })
+
+  it('still refuses to leave the reveal or the vote early', () => {
+    const s = deal()
+    expect(() => applyAction(s, { type: 'advance' })).toThrow(/waiting on/)
+    const voting: GameState = { ...s, phase: 'vote' }
+    expect(() => applyAction(voting, { type: 'advance' })).toThrow(/waiting on/)
   })
 })

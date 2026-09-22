@@ -3,12 +3,14 @@ import { useT } from '../../i18n'
 export function Home({
   hasGame,
   onNew,
+  onLive,
   onResume,
   onRules,
   onScoreboard,
 }: {
   hasGame: boolean
   onNew: () => void
+  onLive: () => void
   onResume: () => void
   onRules: () => void
   onScoreboard: () => void
@@ -29,6 +31,13 @@ export function Home({
         )}
         <button className={`btn block${hasGame ? '' : ' primary'}`} onClick={onNew}>
           {t('home.newGame')}
+          <br />
+          <span className="muted small">{t('home.hotseatHint')}</span>
+        </button>
+        <button className="btn block" onClick={onLive}>
+          {t('home.live')}
+          <br />
+          <span className="muted small">{t('home.liveHint')}</span>
         </button>
         <button className="btn block" onClick={onRules}>
           {t('home.rules')}

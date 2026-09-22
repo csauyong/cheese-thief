@@ -32,6 +32,18 @@ export type TieRule =
   /** Publisher's later English clarification: a tie for top means the thief escapes. */
   | 'thiefWins'
 
+/**
+ * How a round progresses.
+ *
+ * `hotseat` is one shared phone: seats take turns, and the two interactive
+ * choices are pulled forward into 身分揭曉 so the phone can travel in seat order.
+ *
+ * `live` is a phone each: players act simultaneously, and the night is narrated
+ * hour by hour exactly as it is around a real table — which also means the thief
+ * gets to pick their 共犯 in the moment, rather than in advance.
+ */
+export type GameMode = 'hotseat' | 'live'
+
 export type VoteStyle =
   /** Pass the phone; each vote is entered privately. */
   | 'secret'
@@ -60,9 +72,10 @@ export interface RulesConfig {
 }
 
 export interface GameSetup {
-  /** Seat order. The phone is always passed in this order, never in hour order. */
+  /** Seat order. In hotseat the phone is passed in this order, never in hour order. */
   names: string[]
   rules: RulesConfig
+  mode?: GameMode
 }
 
 export interface Player {
@@ -93,13 +106,18 @@ export type Phase =
 
 export interface GameState {
   seed: number
+  mode: GameMode
   phase: Phase
   preset: Preset
   rules: RulesConfig
   players: Player[]
   thiefId: PlayerId
-  /** Seat index whose turn it is to hold the phone, during any pass phase. */
+  /** Hotseat only: the seat currently holding the phone. */
   cursor: number
+  /** Live only: the hour being called right now, or null outside the night. */
+  nightHour: Hour | null
+  /** Live only: players who have finished whatever the current step asks of them. */
+  ready: PlayerId[]
 }
 
 /** Everything one player privately learns from the night. Nothing more. */
@@ -146,6 +164,11 @@ export type Action =
   | { type: 'designateAccomplices'; ids: PlayerId[] }
   | { type: 'peek'; playerId: PlayerId; targetId: PlayerId }
   | { type: 'castVote'; playerId: PlayerId; targetId: PlayerId }
-  /** Hand the phone on. Ends the phase when the last seat is done. */
+  /** Live only: this player is finished with the current step. */
+  | { type: 'ready'; playerId: PlayerId }
+  /**
+   * Hotseat: hand the phone on, ending the phase after the last seat.
+   * Live: move to the next hour or phase, once nobody is still being waited on.
+   */
   | { type: 'advance' }
   | { type: 'setTieRule'; tieRule: TieRule }

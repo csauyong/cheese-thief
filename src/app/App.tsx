@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 
 import type { GameSetup, GameState } from '../engine'
 import { createGame, randomSeed } from '../engine'
@@ -14,20 +14,24 @@ import { Rules } from './screens/Rules'
 import { Scoreboard } from './screens/Scoreboard'
 import { Setup } from './screens/Setup'
 import { Vote } from './screens/Vote'
+import { roomCodeFromUrl } from '../net/protocol'
 import { useWakeLock } from './useWakeLock'
+
+const Live = lazy(() => import('./live/Live').then((m) => ({ default: m.Live })))
 
 const GAME_KEY = 'cheese-thief:game'
 
-export type View = 'home' | 'setup' | 'game' | 'rules' | 'scoreboard'
+export type View = 'home' | 'setup' | 'game' | 'live' | 'rules' | 'scoreboard'
 
 export function App() {
   const { t, lang, setLang } = useT()
-  const [view, setView] = useState<View>('home')
+  // A scanned QR lands on ?room=CODE, so open the join screen straight away.
+  const [view, setView] = useState<View>(() => (roomCodeFromUrl() ? 'live' : 'home'))
   // Surviving a refresh matters here: a phone being passed round a table gets
   // backgrounded, rotated and fat-fingered, and losing the deal means redealing.
   const [game, setGame] = useState<GameState | null>(() => readJson<GameState | null>(GAME_KEY, null))
 
-  useWakeLock(view === 'game')
+  useWakeLock(view === 'game' || view === 'live')
 
   useEffect(() => {
     if (game) writeJson(GAME_KEY, game)
@@ -70,6 +74,7 @@ export function App() {
         <Home
           hasGame={game !== null}
           onNew={() => setView('setup')}
+          onLive={() => setView('live')}
           onResume={() => setView('game')}
           onRules={() => setView('rules')}
           onScoreboard={() => setView('scoreboard')}
@@ -77,6 +82,11 @@ export function App() {
       )}
 
       {view === 'setup' && <Setup onBack={() => setView('home')} onStart={startGame} />}
+      {view === 'live' && (
+        <Suspense fallback={<p className="muted center">{t('live.status.connecting')}</p>}>
+          <Live onBack={() => setView('home')} />
+        </Suspense>
+      )}
       {view === 'rules' && <Rules onBack={() => setView('home')} />}
       {view === 'scoreboard' && <Scoreboard onBack={() => setView('home')} />}
 
@@ -84,13 +94,16 @@ export function App() {
         <GameView game={game} setGame={setGame} onQuit={endGame} onAgain={() => playAgain(game)} />
       )}
 
-      {view === 'game' && !game && <Home
-        hasGame={false}
-        onNew={() => setView('setup')}
-        onResume={() => setView('game')}
-        onRules={() => setView('rules')}
-        onScoreboard={() => setView('scoreboard')}
-      />}
+      {view === 'game' && !game && (
+        <Home
+          hasGame={false}
+          onNew={() => setView('setup')}
+          onLive={() => setView('live')}
+          onResume={() => setView('game')}
+          onRules={() => setView('rules')}
+          onScoreboard={() => setView('scoreboard')}
+        />
+      )}
     </div>
   )
 }

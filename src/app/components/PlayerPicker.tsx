@@ -1,4 +1,10 @@
-import type { Player, PlayerId } from '../../engine'
+import type { PlayerId } from '../../engine'
+
+/** Anything with a name is pickable; the picker has no business with roles. */
+export interface Pickable {
+  id: PlayerId
+  name: string
+}
 
 /**
  * Pick one player, or several up to a limit. Used for the peek, the thief's
@@ -12,7 +18,7 @@ export function PlayerPicker({
   max = 1,
   disabled = false,
 }: {
-  players: Player[]
+  players: readonly Pickable[]
   selected: PlayerId[]
   onSelect: (ids: PlayerId[]) => void
   max?: number

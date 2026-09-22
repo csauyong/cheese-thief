@@ -1,9 +1,12 @@
 # 奶酪大盜 Cheese Thief
 
-一支手機就能玩的《奶酪大盜》線上版。4–8 人，十分鐘一局，不用網路。
+《奶酪大盜》線上版。4–8 人，十分鐘一局。兩種玩法：**一支手機**傳著玩（完全不用網路），
+或是**每人一支手機**連線玩，重現真正的閉眼夜晚。
 
-An online version of the board game **Cheese Thief**, built to run on one phone
-in the middle of the table. 4–8 players, about ten minutes, works offline.
+An online version of the board game **Cheese Thief**, two ways: **one phone**
+passed round the table, which needs no network at all, or **a phone each** over a
+direct peer-to-peer connection, which runs the real eyes-closed night. 4–8
+players, about ten minutes. Still just a static page — no server, no accounts.
 
 **▶ [csauyong.github.io/cheese-thief](https://csauyong.github.io/cheese-thief/)**
 
@@ -14,7 +17,9 @@ in the middle of the table. 4–8 players, about ten minutes, works offline.
 
 ---
 
-## 怎麼用 / How it works
+## 兩種玩法 / Two ways to play
+
+### 一支手機 / One phone
 
 手機放在桌子中央，**照座位順序**傳一圈。每個人按住螢幕看自己的身分與點數，
 放手就蓋回去。夜晚階段也是一樣傳一圈，每個人看到自己那一夜的完整報告。
@@ -32,6 +37,47 @@ who woke before whom, and combined with whether the cheese was still there, that
 hands them the thief. So the thief picks their 共犯 during the role reveal, and
 the four-player die choice happens there too — by the night, every report is
 already settled.
+
+### 每人一支手機 / A phone each
+
+一個人按「開一個房間」，畫面上會出現一個四字房號和 QR code；其他人掃碼或輸入房號就進來了。
+連線是瀏覽器對瀏覽器（WebRTC），沒有我們的伺服器。
+
+這個模式跑的是**真正的夜晚**：主持畫面從 1 點數到 6 點，輪到你的點數，你的手機才會亮起來給你看
+那一刻的資訊。大盜也是在偷奶酪的當下才指定共犯，不像一支手機的版本要先講好。
+
+One person opens a room and gets a four-character code and a QR; everyone else
+scans or types it in. The connection is browser-to-browser over WebRTC, through
+the public PeerJS broker — there is no server of ours anywhere in it.
+
+This mode runs the **real night**: the hours are called 1 through 6 and your
+phone only lights up on yours. The thief picks their 共犯 in the moment of the
+theft, rather than in advance.
+
+兩件值得知道的事 / Two things worth knowing:
+
+- 房主的分頁要一直開著。那一頁**就是**這局遊戲；關掉房間就沒了。
+  The host's tab *is* the game. Close it and the room goes with it.
+- 每個「小時」的長度都一樣，就算那個時間沒有人醒著。如果沒人醒的時間一閃而過，
+  大家馬上就知道那個時間沒人——所以夜晚是照時鐘走的，不是照大家按完沒。
+  Every hour lasts the same length even when nobody is awake for it. An hour that
+  ended early would announce that nobody woke then, so the night runs on a clock.
+
+斷線了重新進來就好：房號加上瀏覽器裡存的一組 token，會把你放回原來的座位、原來的身分。
+
+If a phone drops, rejoining puts it back in the same seat with the same card.
+
+#### 換一個 broker / Pointing at your own broker
+
+預設用 PeerJS 的公用 broker。如果它掛了或被你的網路擋住，可以自己跑一個，build 的時候指定：
+
+```bash
+VITE_PEER_HOST=192.168.1.10 VITE_PEER_PORT=9000 VITE_PEER_PATH=/ npm run build
+```
+
+Broker 只負責讓兩個瀏覽器互相認識，遊戲資料不會經過它。
+
+The broker only introduces browsers to each other; no game data passes through it.
 
 ## 規則 / The rules
 
@@ -77,24 +123,43 @@ npm run typecheck
 npm run build
 ```
 
+連線模式的端對端測試需要一個本機 broker（`npx peer --port 9000`），然後用四、五個瀏覽器
+分頁跑完整一局。房間邏輯本身在 `src/net/room.test.ts` 裡不需要任何網路就能測。
+
+The room logic is tested with no network at all in `src/net/room.test.ts`; the
+WebRTC path was driven end-to-end against a local broker with five real browsers.
+
 ### 專案結構 / Layout
 
 ```
-src/engine/    純函式規則引擎，不碰 UI。發牌、夜晚、投票、勝負都在這裡
+src/engine/    純函式規則引擎，不碰 UI。兩種玩法共用同一套規則
+src/net/       連線模式：房間（權威端）、協定、WebRTC 傳輸
 src/i18n/      繁體中文（來源）與英文字典；缺 key 編譯就會擋下來
-src/app/       畫面與元件
+src/app/       畫面與元件；src/app/live/ 是連線模式的畫面
 src/store/     計分板與設定，存在 localStorage
 scripts/       重新產生 PWA 圖示（無外部相依）
 ```
 
-規則引擎是純函式，用種子亂數，所以測試可以直接指定「三個人同時和大盜醒著」這種
-牌局，而不是靠運氣碰到。測試裡也有一條**不洩漏**的檢查：任何人的夜晚報告都不會提到
-沒有和他同時醒著、也不是他偷看對象的玩家。
+引擎有兩種進行方式：`hotseat` 照座位輪流，`live` 大家同時動、夜晚照時鐘走。規則本身完全一樣。
 
-The engine is pure and seeded, so tests can specify awkward deals outright
-rather than fishing for them. One test is a **leak invariant**: no player's night
-report ever names someone who was neither awake alongside them nor the target of
-their peek.
+The engine has two progressions — `hotseat` takes seats in turn, `live` lets
+everyone act at once — over one identical set of rules.
+
+規則引擎是純函式，用種子亂數，所以測試可以直接指定「三個人同時和大盜醒著」這種
+牌局，而不是靠運氣碰到。測試裡有三條**不洩漏**的檢查：
+
+The engine is pure and seeded, so tests can specify awkward deals outright rather
+than fishing for them. Three tests are **leak invariants**:
+
+1. 任何人的夜晚報告都不會提到沒有和他同時醒著、也不是他偷看對象的玩家。
+   No night report names someone who was neither awake alongside the reader nor
+   the target of their peek.
+2. 連線模式送出去的資料裡，身分和骰子只會出現在收件人自己那一塊。
+   Over the wire, roles and dice appear only in the recipient's own corner of the
+   payload — the leak boundary is what gets sent, not what the UI remembers to hide.
+3. 夜晚不會說出「還在等誰」，也不會把別人的「已完成」告訴你——那等於直接說誰醒著。
+   The night never says who it is waiting on, nor shows anyone else's ready flag,
+   because either would name who is awake.
 
 ## 規則來源 / Sources
 
