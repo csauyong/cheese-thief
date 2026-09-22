@@ -1,0 +1,472 @@
+/* A night in a mouse hole: warm dark, one cheese-yellow accent, big tap targets. */
+:root {
+  --bg: #12100e;
+  --surface: #1c1916;
+  --surface-2: #262119;
+  --border: #37302a;
+  --text: #f4efe7;
+  --muted: #a89c8d;
+  --cheese: #f4c04a;
+  --cheese-dim: #8a6c22;
+  --danger: #e0785f;
+  --good: #86c98b;
+  --radius: 14px;
+  --tap: 52px;
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'PingFang TC',
+    'Hiragino Sans CNS', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overscroll-behavior-y: contain;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+}
+
+.app {
+  width: 100%;
+  max-width: 560px;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: 1.9rem;
+}
+h2 {
+  font-size: 1.3rem;
+}
+h3 {
+  font-size: 1.05rem;
+}
+
+p {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 0.85rem;
+}
+.center {
+  text-align: center;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.spacer {
+  flex: 1;
+}
+
+/* ---- header ---- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.topbar h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- surfaces ---- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card.quiet {
+  background: transparent;
+}
+
+.card.accent {
+  border-color: var(--cheese-dim);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+  margin: 0;
+}
+
+/* ---- buttons ---- */
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.btn {
+  min-height: var(--tap);
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  touch-action: manipulation;
+  transition: transform 80ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.btn:active {
+  transform: scale(0.985);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--cheese);
+  border-color: var(--cheese);
+  color: #201a08;
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: transparent;
+}
+
+.btn.block {
+  width: 100%;
+}
+
+.btn.small {
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.btn.selected {
+  border-color: var(--cheese);
+  background: rgba(244, 192, 74, 0.14);
+}
+
+/* ---- form controls ---- */
+
+input[type='text'] {
+  font: inherit;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+input[type='text']:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--cheese);
+  outline-offset: 2px;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap);
+  cursor: pointer;
+}
+
+.switch input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--cheese);
+  flex: none;
+}
+
+.seg {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.seg .btn {
+  flex: 1 1 45%;
+  min-height: 46px;
+}
+
+/* ---- key/value table ---- */
+
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  font-size: 0.92rem;
+}
+
+.kv dt {
+  color: var(--muted);
+}
+
+.kv dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* ---- dice ---- */
+
+.die {
+  display: inline-block;
+  vertical-align: middle;
+  flex: none;
+}
+
+.die rect {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.die circle {
+  fill: var(--cheese);
+}
+
+.dice-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ---- hold to reveal ---- */
+
+.hold {
+  position: relative;
+  min-height: 190px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--cheese-dim);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  cursor: pointer;
+  text-align: center;
+}
+
+.hold.open {
+  border-style: solid;
+  border-color: var(--cheese);
+  cursor: default;
+}
+
+.hold-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.hold-prompt strong {
+  color: var(--cheese);
+  font-size: 1.1rem;
+}
+
+.hold-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ---- role card ---- */
+
+.role {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.role-name {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--cheese);
+}
+
+.role.thief .role-name {
+  color: var(--danger);
+}
+
+.role.scapegoat .role-name {
+  color: #b79ae0;
+}
+
+/* ---- results ---- */
+
+.banner {
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.banner.sleepyheads {
+  border-color: var(--good);
+  color: var(--good);
+}
+.banner.thief {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.banner.scapegoat {
+  border-color: #b79ae0;
+  color: #b79ae0;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.tag.thief {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.tag.accomplice {
+  border-color: var(--cheese-dim);
+  color: var(--cheese);
+}
+.tag.scapegoat {
+  border-color: #6c5a8a;
+  color: #b79ae0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.table th,
+.table td {
+  padding: 8px 6px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ---- countdown ---- */
+
+.countdown {
+  font-size: 5rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--cheese);
+  line-height: 1.2;
+}
+
+/* ---- misc ---- */
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.progress {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
