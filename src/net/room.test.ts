@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { HOURS, pendingChoiceFor, pendingPlayers, wakeHoursOf } from '../engine'
-import type { GameState, PlayerId } from '../engine'
+import type { GameState, PlayerId, RulesConfig } from '../engine'
 import { makeRoomCode, normaliseRoomCode } from './protocol'
 import type { ClientView } from './protocol'
 import { Room, makeToken } from './room'
@@ -457,3 +457,56 @@ function seatOf(room: Room, token: string): PlayerId {
   return `p${seat}`
 }
 
+
+describe('the simple game over the network', () => {
+  const simpleRules: RulesConfig = {
+    tieRule: 'sleepyheadsWin',
+    useScapegoat: true,
+    voteStyle: 'secret',
+    ruleSet: 'simple',
+  }
+
+  function crowdRoom(n: number, rules: RulesConfig) {
+    const room = new Room({
+      code: 'TEST',
+      hostToken: 'token-0',
+      hostName: 'Host',
+      rules: { ...rules },
+      seed: () => 7,
+      now: () => 0,
+      hourMs: HOUR_MS,
+    })
+    for (let i = 1; i < n; i++) room.join(`peer-${i}`, `token-${i}`, `Mouse ${i}`)
+    return room
+  }
+
+  it('starts with three', () => {
+    expect(crowdRoom(3, simpleRules).viewFor('token-0').canStart).toBe(true)
+    expect(crowdRoom(3, { ...simpleRules, ruleSet: 'classic' }).viewFor('token-0').canStart).toBe(
+      false,
+    )
+  })
+
+  it('seats far more than eight, where the classic table is full', () => {
+    const room = crowdRoom(20, simpleRules)
+    expect(room.roster).toHaveLength(20)
+    expect(room.viewFor('token-0').canStart).toBe(true)
+    room.handle('token-0', { t: 'start' })
+    expect(room.state?.players).toHaveLength(20)
+    expect(room.state?.players.every((p) => !p.isAccomplice && p.role !== 'scapegoat')).toBe(true)
+
+    const { tieRule, useScapegoat, voteStyle } = simpleRules
+    expect(() => crowdRoom(9, { tieRule, useScapegoat, voteStyle })).toThrow(/full/)
+  })
+
+  it('lets the host switch games in the lobby, and holds the start to the new limits', () => {
+    const room = crowdRoom(10, simpleRules)
+    room.handle('token-0', { t: 'setRules', rules: { ...simpleRules, ruleSet: 'classic' } })
+    expect(room.viewFor('token-1').rules.ruleSet).toBe('classic')
+    expect(room.viewFor('token-0').canStart).toBe(false)
+    expect(() => room.handle('token-0', { t: 'start' })).toThrow(/4–8/)
+    room.handle('token-0', { t: 'setRules', rules: simpleRules })
+    room.handle('token-0', { t: 'start' })
+    expect(room.state?.preset.ruleSet).toBe('simple')
+  })
+})

@@ -44,6 +44,17 @@ export type TieRule =
  */
 export type GameMode = 'hotseat' | 'live'
 
+/**
+ * Which rule set the table plays.
+ *
+ * `classic` is the boxed game: 4–8 players, each count with its own balance.
+ *
+ * `simple` is the easiest possible version, for any number of players from three
+ * up: one die each, one 奶酪大盜, everyone else a 貪睡鼠. No 共犯, no peeking, no
+ * 背鍋鼠. Whoever is awake with the thief simply saw them.
+ */
+export type RuleSet = 'classic' | 'simple'
+
 export type VoteStyle =
   /** Pass the phone; each vote is entered privately. */
   | 'secret'
@@ -52,6 +63,7 @@ export type VoteStyle =
 
 /** The rule set a given player count brings with it. Not user-configurable. */
 export interface Preset {
+  ruleSet: RuleSet
   players: number
   dicePerPlayer: 1 | 2
   /** 背鍋鼠 is available at this player count (the table may still decline it). */
@@ -69,6 +81,8 @@ export interface RulesConfig {
   /** Honoured only where `Preset.scapegoatAvailable`. */
   useScapegoat: boolean
   voteStyle: VoteStyle
+  /** Missing means `classic` — setups saved before the simple game existed. */
+  ruleSet?: RuleSet
 }
 
 export interface GameSetup {

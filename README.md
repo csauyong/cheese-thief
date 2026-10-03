@@ -100,6 +100,17 @@ Full rules live in the app itself, in both languages. In brief:
 - **勝負**：最高票的人翻牌。大盜在其中，貪睡鼠贏；不在其中，大盜和共犯贏。
   背鍋鼠在其中，背鍋鼠自己贏（分開計算）。
 
+### 簡易模式 / The simple game
+
+人數不限（3 人以上），規則最少：一個大盜，其他都是貪睡鼠，每人一顆骰子。
+沒有共犯、不能偷看骰盅、沒有背鍋鼠——和大盜同時醒著的人就是看到了大盜，如此而已。
+主畫面的「簡易模式」直接進入；設定畫面和連線大廳也都能切換。
+
+Any number of players from three up, with the fewest rules: one thief, everyone
+else a 貪睡鼠, one die each. No 共犯, no peeking, no 背鍋鼠 — anyone awake with
+the thief simply saw them. Start it from **Simple game** on the home screen, or
+switch to it in setup or in the networked lobby.
+
 ### 兩個判斷 / Two judgement calls
 
 規則來源沒有把這兩點講死，程式裡各取一種讀法，都在 `src/engine/rules.ts` 一行就能改：

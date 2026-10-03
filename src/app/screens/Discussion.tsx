@@ -18,6 +18,9 @@ export function Discussion({
   onQuit: () => void
 }) {
   const { t, tl } = useT()
+  // The simple game has no peeking, so there is nothing to ask about it.
+  const promptsKey =
+    game.rules.ruleSet === 'simple' ? 'discussion.promptsSimple' : 'discussion.prompts'
   return (
     <>
       <PhaseHeader titleKey="discussion.title" onQuit={onQuit} />
@@ -34,7 +37,7 @@ export function Discussion({
       <div className="card quiet">
         <h3>{t('discussion.promptTitle')}</h3>
         <ul className="muted">
-          {tl('discussion.prompts').map((prompt) => (
+          {tl(promptsKey).map((prompt) => (
             <li key={prompt}>{prompt}</li>
           ))}
         </ul>

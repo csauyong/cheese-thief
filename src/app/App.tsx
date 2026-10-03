@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 
-import type { GameSetup, GameState } from '../engine'
+import type { GameSetup, GameState, RuleSet } from '../engine'
 import { createGame, randomSeed } from '../engine'
 import { useT } from '../i18n'
 import { saveSetup } from '../store/scoreboard'
@@ -30,6 +30,8 @@ export function App() {
   // Surviving a refresh matters here: a phone being passed round a table gets
   // backgrounded, rotated and fat-fingered, and losing the deal means redealing.
   const [game, setGame] = useState<GameState | null>(() => readJson<GameState | null>(GAME_KEY, null))
+  // Which game the setup screen opens on, when the home screen asked for one.
+  const [setupRuleSet, setSetupRuleSet] = useState<RuleSet | undefined>(undefined)
 
   useWakeLock(view === 'game' || view === 'live')
 
@@ -42,6 +44,11 @@ export function App() {
     saveSetup({ names: setup.names, rules: setup.rules })
     setGame(createGame(setup, randomSeed()))
     setView('game')
+  }, [])
+
+  const openSetup = useCallback((ruleSet?: RuleSet) => {
+    setSetupRuleSet(ruleSet)
+    setView('setup')
   }, [])
 
   const endGame = useCallback(() => {
@@ -73,7 +80,8 @@ export function App() {
       {view === 'home' && (
         <Home
           hasGame={game !== null}
-          onNew={() => setView('setup')}
+          onNew={() => openSetup()}
+          onSimple={() => openSetup('simple')}
           onLive={() => setView('live')}
           onResume={() => setView('game')}
           onRules={() => setView('rules')}
@@ -81,7 +89,9 @@ export function App() {
         />
       )}
 
-      {view === 'setup' && <Setup onBack={() => setView('home')} onStart={startGame} />}
+      {view === 'setup' && (
+        <Setup initialRuleSet={setupRuleSet} onBack={() => setView('home')} onStart={startGame} />
+      )}
       {view === 'live' && (
         <Suspense fallback={<p className="muted center">{t('live.status.connecting')}</p>}>
           <Live onBack={() => setView('home')} />
@@ -97,7 +107,8 @@ export function App() {
       {view === 'game' && !game && (
         <Home
           hasGame={false}
-          onNew={() => setView('setup')}
+          onNew={() => openSetup()}
+          onSimple={() => openSetup('simple')}
           onLive={() => setView('live')}
           onResume={() => setView('game')}
           onRules={() => setView('rules')}

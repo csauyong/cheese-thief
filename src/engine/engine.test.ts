@@ -9,7 +9,7 @@ import {
   pendingChoiceFor,
   pendingPlayers,
 } from './engine'
-import { presetFor } from './presets'
+import { playerRange, presetFor, seatsPlayers } from './presets'
 import {
   accompliceSlots,
   awakeAt,
@@ -81,7 +81,9 @@ function handDeal(
     ready: [],
   }
   if (!thiefMustChooseAccomplices(state)) {
-    for (const witness of witnessesOf(state)) witness.isAccomplice = true
+    for (const witness of witnessesOf(state).slice(0, accompliceSlots(state))) {
+      witness.isAccomplice = true
+    }
   }
   return state
 }
@@ -831,5 +833,86 @@ describe('live mode: the night runs on a clock', () => {
     expect(() => applyAction(s, { type: 'advance' })).toThrow(/waiting on/)
     const voting: GameState = { ...s, phase: 'vote' }
     expect(() => applyAction(voting, { type: 'advance' })).toThrow(/waiting on/)
+  })
+})
+
+describe('the simple game: any number of players, fewest rules', () => {
+  const crowd = (n: number) => Array.from({ length: n }, (_, i) => `Mouse ${i + 1}`)
+  const simple = (n: number): GameSetup => ({ names: crowd(n), rules: rules({ ruleSet: 'simple' }) })
+
+  it('seats three or more, with no ceiling, while classic stays at 4–8', () => {
+    expect(playerRange('simple')).toEqual({ min: 3, max: Infinity })
+    expect(playerRange('classic')).toEqual({ min: 4, max: 8 })
+    expect(seatsPlayers(2, 'simple')).toBe(false)
+    for (const n of [3, 4, 8, 9, 20, 100]) expect(seatsPlayers(n, 'simple')).toBe(true)
+    expect(seatsPlayers(9, 'classic')).toBe(false)
+    expect(() => presetFor(2, 'simple')).toThrow()
+    expect(() => createGame({ ...simple(9), rules: rules() }, 1)).toThrow()
+  })
+
+  it('switches every special rule off, whatever the count', () => {
+    for (const n of [3, 4, 6, 8, 15, 40]) {
+      const p = presetFor(n, 'simple')
+      expect(p).toMatchObject({
+        ruleSet: 'simple',
+        players: n,
+        dicePerPlayer: 1,
+        scapegoatAvailable: false,
+        accompliceCap: 0,
+        peekAllowed: false,
+        thiefWakesOnAllDice: false,
+      })
+    }
+  })
+
+  it('deals one thief and nothing but 貪睡鼠, one die each, even when 背鍋鼠 is on', () => {
+    for (const n of [3, 7, 25]) {
+      for (let seed = 0; seed < 20; seed++) {
+        const g = createGame(simple(n), seed)
+        expect(g.rules.ruleSet).toBe('simple')
+        expect(g.players).toHaveLength(n)
+        expect(g.players.filter((p) => p.role === 'thief')).toHaveLength(1)
+        expect(g.players.filter((p) => p.role === 'scapegoat')).toHaveLength(0)
+        for (const p of g.players) expect(p.dice).toHaveLength(1)
+      }
+    }
+  })
+
+  it('asks nobody for a choice, recruits no 共犯 and offers no peek', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const g = createGame(simple(18), seed)
+      for (const p of g.players) {
+        expect(pendingChoiceFor(g, p.id)).toBeNull()
+        expect(canPeek(g, p.id)).toBe(false)
+        expect(p.isAccomplice).toBe(false)
+      }
+    }
+  })
+
+  it('still lets a mouse awake with the thief see them, without changing sides', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const g = createGame(simple(12), seed)
+      for (const w of witnessesOf(g)) {
+        const report = nightReportFor(g, w.id)
+        expect(report.thiefId).toBe(g.thiefId)
+        expect(report.isAccomplice).toBe(false)
+        expect(factionOf(w, g.thiefId)).toBe('sleepyheads')
+      }
+    }
+  })
+
+  it('plays a whole crowded round on one phone to a two-sided result', () => {
+    const done = playRound(createGame(simple(30), 99), voteFirstOther)
+    expect(done.phase).toBe('results')
+    const outcome = decideOutcome(done)
+    expect(outcome.accompliceIds).toEqual([])
+    expect(outcome.scapegoatId).toBeNull()
+    expect(outcome.winningFactions).toHaveLength(1)
+  })
+
+  it('treats a setup saved before the simple game existed as classic', () => {
+    const g = createGame(setup(5), 3)
+    expect(g.rules.ruleSet).toBe('classic')
+    expect(g.preset.accompliceCap).toBe(1)
   })
 })

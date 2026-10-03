@@ -36,7 +36,7 @@ import { HOURS } from './types'
  * the way they would at a real table.
  */
 export function createGame(setup: GameSetup, seed: number): GameState {
-  const preset = presetFor(setup.names.length)
+  const preset = presetFor(setup.names.length, setup.rules.ruleSet ?? 'classic')
   const rng = makeRng(seed)
 
   const useScapegoat = preset.scapegoatAvailable && setup.rules.useScapegoat
@@ -65,7 +65,7 @@ export function createGame(setup: GameSetup, seed: number): GameState {
     mode: setup.mode ?? 'hotseat',
     phase: 'reveal',
     preset,
-    rules: { ...setup.rules, useScapegoat },
+    rules: { ...setup.rules, useScapegoat, ruleSet: preset.ruleSet },
     players,
     thiefId: thief.id,
     cursor: 0,
@@ -75,8 +75,11 @@ export function createGame(setup: GameSetup, seed: number): GameState {
 
   // When there are no more witnesses than slots, every witness is recruited and
   // the thief has nothing to decide — settle it now so the reports are complete.
+  // Capped at the slots, so a rule set with no 共犯 at all recruits nobody.
   if (!thiefMustChooseAccomplices(state)) {
-    for (const witness of witnessesOf(state)) witness.isAccomplice = true
+    for (const witness of witnessesOf(state).slice(0, accompliceSlots(state))) {
+      witness.isAccomplice = true
+    }
   }
 
   return state

@@ -1,3 +1,5 @@
+import type { RuleSet, RulesConfig } from '../../engine'
+import { playerRange } from '../../engine'
 import type { ClientView, ConnectionStatus } from '../../net'
 import { useT } from '../../i18n'
 import { QrCode } from '../components/QrCode'
@@ -9,6 +11,7 @@ export function LiveLobby({
   isHost,
   joinUrl,
   onStart,
+  onSetRules,
   onLeave,
   onCopy,
   copied,
@@ -18,11 +21,14 @@ export function LiveLobby({
   isHost: boolean
   joinUrl: string
   onStart: () => void
+  onSetRules: (rules: RulesConfig) => void
   onLeave: () => void
   onCopy: () => void
   copied: boolean
 }) {
   const { t } = useT()
+  const ruleSet = view.rules.ruleSet ?? 'classic'
+  const range = playerRange(ruleSet)
 
   return (
     <>
@@ -43,6 +49,27 @@ export function LiveLobby({
       )}
 
       <div className="card">
+        <h3>{t('live.rulesTitle')}</h3>
+        {isHost ? (
+          <div className="seg">
+            {(['classic', 'simple'] as RuleSet[]).map((option) => (
+              <button
+                key={option}
+                className={`btn small${ruleSet === option ? ' selected' : ''}`}
+                aria-pressed={ruleSet === option}
+                onClick={() => onSetRules({ ...view.rules, ruleSet: option })}
+              >
+                {t(`setup.ruleSet.${option}`)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p>{t(`setup.ruleSet.${ruleSet}`)}</p>
+        )}
+        <p className="muted small">{t(`setup.ruleSet.${ruleSet}Hint`)}</p>
+      </div>
+
+      <div className="card">
         <h3>{t('live.playersIn', { n: view.players.length })}</h3>
         <div className="stack-sm">
           {view.players.map((player) => (
@@ -55,7 +82,12 @@ export function LiveLobby({
             </div>
           ))}
         </div>
-        {!view.canStart && <p className="muted small">{t('live.needMore')}</p>}
+        {!view.canStart && view.players.length < range.min && (
+          <p className="muted small">{t('live.needMore', { n: range.min })}</p>
+        )}
+        {!view.canStart && view.players.length > range.max && (
+          <p className="muted small">{t('live.tooMany')}</p>
+        )}
       </div>
 
       {isHost ? (

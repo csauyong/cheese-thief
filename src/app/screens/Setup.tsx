@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
-import type { GameSetup, RulesConfig, TieRule, VoteStyle } from '../../engine'
-import { MAX_PLAYERS, MIN_PLAYERS, presetFor } from '../../engine'
+import type { GameSetup, RuleSet, RulesConfig, TieRule, VoteStyle } from '../../engine'
+import { playerRange, presetFor, seatsPlayers } from '../../engine'
 import { useT } from '../../i18n'
 import { loadSetup } from '../../store/scoreboard'
 
@@ -9,12 +9,16 @@ const DEFAULT_RULES: RulesConfig = {
   tieRule: 'sleepyheadsWin',
   useScapegoat: true,
   voteStyle: 'secret',
+  ruleSet: 'classic',
 }
 
 export function Setup({
+  initialRuleSet,
   onBack,
   onStart,
 }: {
+  /** Set when the home screen sent us here for a particular game. */
+  initialRuleSet?: RuleSet
   onBack: () => void
   onStart: (setup: GameSetup) => void
 }) {
@@ -26,11 +30,14 @@ export function Setup({
   const [rules, setRules] = useState<RulesConfig>(() => ({
     ...DEFAULT_RULES,
     ...remembered?.rules,
+    ...(initialRuleSet ? { ruleSet: initialRuleSet } : {}),
   }))
   const [error, setError] = useState<string | null>(null)
 
+  const ruleSet = rules.ruleSet ?? 'classic'
+  const range = playerRange(ruleSet)
   const count = names.length
-  const preset = count >= MIN_PLAYERS && count <= MAX_PLAYERS ? presetFor(count) : null
+  const preset = seatsPlayers(count, ruleSet) ? presetFor(count, ruleSet) : null
 
   const setName = (index: number, value: string) =>
     setNames((current) => current.map((n, i) => (i === index ? value : n)))
@@ -41,8 +48,8 @@ export function Setup({
 
   const start = () => {
     const trimmed = names.map((n) => n.trim())
-    if (trimmed.length < MIN_PLAYERS || trimmed.length > MAX_PLAYERS) {
-      setError(t('setup.error.count'))
+    if (!seatsPlayers(trimmed.length, ruleSet)) {
+      setError(t(ruleSet === 'simple' ? 'setup.error.countSimple' : 'setup.error.count'))
       return
     }
     if (trimmed.some((n) => n.length === 0)) {
@@ -76,6 +83,23 @@ export function Setup({
       </div>
 
       <div className="card">
+        <h3>{t('setup.ruleSet')}</h3>
+        <div className="seg">
+          {(['classic', 'simple'] as RuleSet[]).map((option) => (
+            <button
+              key={option}
+              className={`btn small${ruleSet === option ? ' selected' : ''}`}
+              aria-pressed={ruleSet === option}
+              onClick={() => setRules({ ...rules, ruleSet: option })}
+            >
+              {t(`setup.ruleSet.${option}`)}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">{t(`setup.ruleSet.${ruleSet}Hint`)}</p>
+      </div>
+
+      <div className="card">
         <h3>{t('setup.playersLabel')}</h3>
         <div className="stack-sm">
           {names.map((name, i) => (
@@ -87,7 +111,7 @@ export function Setup({
                 onChange={(e) => setName(i, e.target.value)}
                 style={{ flex: 1 }}
               />
-              {count > MIN_PLAYERS && (
+              {count > range.min && (
                 <button
                   className="btn small ghost"
                   onClick={() => removePlayer(i)}
@@ -99,7 +123,7 @@ export function Setup({
             </div>
           ))}
         </div>
-        {count < MAX_PLAYERS && (
+        {count < range.max && (
           <button className="btn small block ghost" onClick={addPlayer}>
             {t('setup.addPlayer')}
           </button>
@@ -108,7 +132,11 @@ export function Setup({
 
       {preset && (
         <div className="card">
-          <h3>{t('setup.presetTitle', { n: count })}</h3>
+          <h3>
+            {t(ruleSet === 'simple' ? 'setup.presetTitleSimple' : 'setup.presetTitle', {
+              n: count,
+            })}
+          </h3>
           <dl className="kv">
             <dt>{t('setup.preset.dice')}</dt>
             <dd>{t('setup.preset.diceValue', { n: preset.dicePerPlayer })}</dd>
@@ -120,7 +148,11 @@ export function Setup({
             <dd>
               {preset.accompliceCap > 0
                 ? preset.accompliceCap
-                : t('setup.preset.accompliceNone')}
+                : t(
+                    ruleSet === 'simple'
+                      ? 'setup.preset.accompliceOff'
+                      : 'setup.preset.accompliceNone',
+                  )}
             </dd>
 
             <dt>{t('setup.preset.peek')}</dt>

@@ -73,7 +73,13 @@ function LiveEntry({
         className="btn primary block"
         disabled={!trimmed}
         onClick={() =>
-          onGo({ kind: 'host', code: makeRoomCode(), name: trimmed, rules: DEFAULT_RULES })
+          onGo({
+            kind: 'host',
+            code: makeRoomCode(),
+            name: trimmed,
+            // Open on whichever game this table played last; the lobby can switch.
+            rules: { ...DEFAULT_RULES, ruleSet: remembered?.rules?.ruleSet ?? 'classic' },
+          })
         }
       >
         {t('live.host')}
@@ -175,6 +181,7 @@ function LiveRoomScreen({
             )
           }}
           onStart={() => send({ t: 'start' })}
+          onSetRules={(rules) => send({ t: 'setRules', rules })}
           onLeave={onLeave}
         />
       ) : (

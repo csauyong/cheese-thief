@@ -1,6 +1,4 @@
 import {
-  MAX_PLAYERS,
-  MIN_PLAYERS,
   accompliceSlots,
   applyAction,
   createGame,
@@ -11,7 +9,9 @@ import {
   nightReportFor,
   pendingChoiceFor,
   pendingPlayers,
+  playerRange,
   randomSeed,
+  seatsPlayers,
   witnessesOf,
 } from '../engine'
 import type { GameState, PlayerId, RulesConfig } from '../engine'
@@ -99,7 +99,9 @@ export class Room {
       return existing
     }
     if (this.game) throw new Error('the round has already started')
-    if (this.members.length >= MAX_PLAYERS) throw new Error('the table is full')
+    if (this.members.length >= playerRange(this.rules.ruleSet).max) {
+      throw new Error('the table is full')
+    }
     const member: Member = {
       token,
       peerId,
@@ -236,8 +238,7 @@ export class Room {
       outcome: null,
       // Naming who the night is waiting on would name who is awake.
       waitingOn: game && !nightIsOn ? pendingPlayers(game) : [],
-      canStart:
-        !game && this.members.length >= MIN_PLAYERS && this.members.length <= MAX_PLAYERS,
+      canStart: !game && seatsPlayers(this.members.length, this.rules.ruleSet),
     }
 
     if (!game || !playerId) return base
@@ -278,8 +279,13 @@ export class Room {
   }
 
   private deal(): void {
-    if (this.members.length < MIN_PLAYERS || this.members.length > MAX_PLAYERS) {
-      throw new Error(`Cheese Thief needs ${MIN_PLAYERS}–${MAX_PLAYERS} players`)
+    if (!seatsPlayers(this.members.length, this.rules.ruleSet)) {
+      const { min, max } = playerRange(this.rules.ruleSet)
+      throw new Error(
+        max === Infinity
+          ? `Cheese Thief needs at least ${min} players`
+          : `Cheese Thief needs ${min}–${max} players`,
+      )
     }
     const names = [...this.members].sort((a, b) => a.seat - b.seat).map((m) => m.name)
     this.game = createGame({ names, rules: this.rules, mode: 'live' }, this.seed())

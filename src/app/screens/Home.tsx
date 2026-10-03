@@ -3,6 +3,7 @@ import { useT } from '../../i18n'
 export function Home({
   hasGame,
   onNew,
+  onSimple,
   onLive,
   onResume,
   onRules,
@@ -10,6 +11,7 @@ export function Home({
 }: {
   hasGame: boolean
   onNew: () => void
+  onSimple: () => void
   onLive: () => void
   onResume: () => void
   onRules: () => void
@@ -33,6 +35,11 @@ export function Home({
           {t('home.newGame')}
           <br />
           <span className="muted small">{t('home.hotseatHint')}</span>
+        </button>
+        <button className="btn block" onClick={onSimple}>
+          {t('home.simple')}
+          <br />
+          <span className="muted small">{t('home.simpleHint')}</span>
         </button>
         <button className="btn block" onClick={onLive}>
           {t('home.live')}

@@ -7,6 +7,7 @@ const SECTIONS: Array<[DictKey, DictKey]> = [
   ['rules.dayTitle', 'rules.day'],
   ['rules.winTitle', 'rules.win'],
   ['rules.countsTitle', 'rules.counts'],
+  ['rules.simpleTitle', 'rules.simple'],
   ['rules.appTitle', 'rules.app'],
 ]
 
