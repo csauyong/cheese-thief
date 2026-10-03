@@ -50,8 +50,8 @@ export type GameMode = 'hotseat' | 'live'
  * `classic` is the boxed game: 4–8 players, each count with its own balance.
  *
  * `simple` is the easiest possible version, for any number of players from three
- * up: one die each, one 奶酪大盜, everyone else a 貪睡鼠. No 共犯, no peeking, no
- * 背鍋鼠. Whoever is awake with the thief simply saw them.
+ * up: one die each, one 奶酪大盜, everyone else a 貪睡鼠. No peeking and no
+ * 背鍋鼠; the 共犯 cap grows with the table (see `simpleAccompliceCap`).
  */
 export type RuleSet = 'classic' | 'simple'
 

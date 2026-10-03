@@ -493,7 +493,8 @@ describe('the simple game over the network', () => {
     expect(room.viewFor('token-0').canStart).toBe(true)
     room.handle('token-0', { t: 'start' })
     expect(room.state?.players).toHaveLength(20)
-    expect(room.state?.players.every((p) => !p.isAccomplice && p.role !== 'scapegoat')).toBe(true)
+    expect(room.state?.players.every((p) => p.role !== 'scapegoat')).toBe(true)
+    expect(room.state?.preset.accompliceCap).toBe(6)
 
     const { tieRule, useScapegoat, voteStyle } = simpleRules
     expect(() => crowdRoom(9, { tieRule, useScapegoat, voteStyle })).toThrow(/full/)

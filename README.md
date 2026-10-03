@@ -103,12 +103,16 @@ Full rules live in the app itself, in both languages. In brief:
 ### 簡易模式 / The simple game
 
 人數不限（3 人以上），規則最少：一個大盜，其他都是貪睡鼠，每人一顆骰子。
-沒有共犯、不能偷看骰盅、沒有背鍋鼠——和大盜同時醒著的人就是看到了大盜，如此而已。
+不能偷看骰盅、沒有背鍋鼠。和大盜同時醒著的人會看到大盜，大盜從中指定共犯；
+共犯上限依人數而定，每 3 位非大盜玩家 1 位（3 人 0、4–6 人 1、7–9 人 2……），
+和原版 5–8 人的上限一致。
 主畫面的「簡易模式」直接進入；設定畫面和連線大廳也都能切換。
 
 Any number of players from three up, with the fewest rules: one thief, everyone
-else a 貪睡鼠, one die each. No 共犯, no peeking, no 背鍋鼠 — anyone awake with
-the thief simply saw them. Start it from **Simple game** on the home screen, or
+else a 貪睡鼠, one die each. No peeking and no 背鍋鼠. Anyone awake with the thief
+sees them, and the thief picks 共犯 from among them, up to one for every three
+players besides the thief (none at 3, one at 4–6, two at 7–9, …) — the boxed
+game's own caps at 5–8, carried on without a ceiling. Start it from **Simple game** on the home screen, or
 switch to it in setup or in the networked lobby.
 
 ### 兩個判斷 / Two judgement calls

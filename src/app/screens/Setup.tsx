@@ -148,11 +148,7 @@ export function Setup({
             <dd>
               {preset.accompliceCap > 0
                 ? preset.accompliceCap
-                : t(
-                    ruleSet === 'simple'
-                      ? 'setup.preset.accompliceOff'
-                      : 'setup.preset.accompliceNone',
-                  )}
+                : t('setup.preset.accompliceNone')}
             </dd>
 
             <dt>{t('setup.preset.peek')}</dt>

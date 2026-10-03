@@ -7,6 +7,16 @@ export const MAX_PLAYERS = 8
 export const SIMPLE_MIN_PLAYERS = 3
 
 /**
+ * The simple game's 共犯 cap: one for every three players besides the thief.
+ * That is none at 3, one at 4–6, two at 7–9, three at 10–12 and so on — the
+ * boxed game's own caps at 5–8, carried on without a ceiling, so a big table
+ * still has a thief's side worth playing for.
+ */
+export function simpleAccompliceCap(players: number): number {
+  return Math.floor((players - 1) / 3)
+}
+
+/**
  * The player-count matrix. These are not house rules or optional extras — each
  * count ships its own balance, and the app applies it automatically.
  *
@@ -74,13 +84,13 @@ export function presetFor(players: number, ruleSet: RuleSet = 'classic'): Preset
     if (!seatsPlayers(players, 'simple')) {
       throw new Error(`the simple game needs at least ${SIMPLE_MIN_PLAYERS} players, got ${players}`)
     }
-    // Every special rule off: one die, one waking, nothing to choose or lift.
+    // One die, one waking, nothing to lift — only the 共犯, scaled to the table.
     return {
       ruleSet,
       players,
       dicePerPlayer: 1,
       scapegoatAvailable: false,
-      accompliceCap: 0,
+      accompliceCap: simpleAccompliceCap(players),
       peekAllowed: false,
       thiefWakesOnAllDice: false,
     }

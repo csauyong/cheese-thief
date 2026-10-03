@@ -9,7 +9,7 @@ import {
   pendingChoiceFor,
   pendingPlayers,
 } from './engine'
-import { playerRange, presetFor, seatsPlayers } from './presets'
+import { playerRange, presetFor, seatsPlayers, simpleAccompliceCap } from './presets'
 import {
   accompliceSlots,
   awakeAt,
@@ -850,7 +850,7 @@ describe('the simple game: any number of players, fewest rules', () => {
     expect(() => createGame({ ...simple(9), rules: rules() }, 1)).toThrow()
   })
 
-  it('switches every special rule off, whatever the count', () => {
+  it('switches every special rule off but the 共犯, whatever the count', () => {
     for (const n of [3, 4, 6, 8, 15, 40]) {
       const p = presetFor(n, 'simple')
       expect(p).toMatchObject({
@@ -858,11 +858,17 @@ describe('the simple game: any number of players, fewest rules', () => {
         players: n,
         dicePerPlayer: 1,
         scapegoatAvailable: false,
-        accompliceCap: 0,
         peekAllowed: false,
         thiefWakesOnAllDice: false,
       })
     }
+  })
+
+  it('scales the 共犯 cap with the table: one per three players besides the thief', () => {
+    const caps = [3, 4, 5, 6, 7, 9, 10, 12, 13, 30].map((n) => presetFor(n, 'simple').accompliceCap)
+    expect(caps).toEqual([0, 1, 1, 1, 2, 2, 3, 3, 4, 9])
+    // Where the boxed game has a single-die count, the simple game agrees with it.
+    for (const n of [5, 6, 7, 8]) expect(simpleAccompliceCap(n)).toBe(presetFor(n).accompliceCap)
   })
 
   it('deals one thief and nothing but 貪睡鼠, one die each, even when 背鍋鼠 is on', () => {
@@ -878,25 +884,46 @@ describe('the simple game: any number of players, fewest rules', () => {
     }
   })
 
-  it('asks nobody for a choice, recruits no 共犯 and offers no peek', () => {
+  it('offers no peek, and asks only the thief for a choice', () => {
     for (let seed = 0; seed < 30; seed++) {
       const g = createGame(simple(18), seed)
       for (const p of g.players) {
-        expect(pendingChoiceFor(g, p.id)).toBeNull()
         expect(canPeek(g, p.id)).toBe(false)
-        expect(p.isAccomplice).toBe(false)
+        const choice = pendingChoiceFor(g, p.id)
+        if (p.id === g.thiefId) expect([null, 'accomplices']).toContain(choice)
+        else expect(choice).toBeNull()
       }
     }
   })
 
-  it('still lets a mouse awake with the thief see them, without changing sides', () => {
-    for (let seed = 0; seed < 30; seed++) {
-      const g = createGame(simple(12), seed)
-      for (const w of witnessesOf(g)) {
-        const report = nightReportFor(g, w.id)
-        expect(report.thiefId).toBe(g.thiefId)
+  it('recruits 共犯 from the witnesses, never past the cap', () => {
+    let recruitedSomewhere = false
+    for (const n of [3, 4, 9, 20]) {
+      for (let seed = 0; seed < 40; seed++) {
+        const end = playRound(createGame(simple(n), seed), voteFirstOther)
+        const accomplices = end.players.filter((p) => p.isAccomplice)
+        const witnesses = new Set(witnessesOf(end).map((p) => p.id))
+        expect(accomplices.length).toBe(Math.min(simpleAccompliceCap(n), witnesses.size))
+        for (const a of accomplices) {
+          expect(witnesses.has(a.id)).toBe(true)
+          expect(factionOf(a, end.thiefId)).toBe('thief')
+          expect(nightReportFor(end, a.id).isAccomplice).toBe(true)
+        }
+        if (n === 3) expect(accomplices).toHaveLength(0)
+        recruitedSomewhere ||= accomplices.length > 0
+      }
+    }
+    expect(recruitedSomewhere).toBe(true)
+  })
+
+  it('leaves witnesses past the cap as 貪睡鼠 who know the thief', () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const end = playRound(createGame(simple(12), seed), voteFirstOther)
+      for (const w of witnessesOf(end).filter((p) => !p.isAccomplice)) {
+        const report = nightReportFor(end, w.id)
+        expect(report.thiefId).toBe(end.thiefId)
         expect(report.isAccomplice).toBe(false)
-        expect(factionOf(w, g.thiefId)).toBe('sleepyheads')
+        expect(factionOf(w, end.thiefId)).toBe('sleepyheads')
       }
     }
   })
@@ -905,7 +932,7 @@ describe('the simple game: any number of players, fewest rules', () => {
     const done = playRound(createGame(simple(30), 99), voteFirstOther)
     expect(done.phase).toBe('results')
     const outcome = decideOutcome(done)
-    expect(outcome.accompliceIds).toEqual([])
+    expect(outcome.accompliceIds.length).toBeLessThanOrEqual(simpleAccompliceCap(30))
     expect(outcome.scapegoatId).toBeNull()
     expect(outcome.winningFactions).toHaveLength(1)
   })
